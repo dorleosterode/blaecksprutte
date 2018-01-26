@@ -53,10 +53,11 @@ def train_from_bottom():
 
 def tag_new_mails(v, b, c):
     data, ids = extract_mails.get_new_mails()
-    X = v.transform(data)
-    preds = c.predict(X)
-    tags = b.inverse_transform(preds)
-    extract_mails.write_tags(ids, tags)
+    if len(data) > 0:
+        X = v.transform(data)
+        preds = c.predict(X)
+        tags = b.inverse_transform(preds)
+        extract_mails.write_tags(ids, tags)
 
 def main():
     parser = argparse.ArgumentParser()
