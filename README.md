@@ -29,7 +29,7 @@ calculates probable tags for these emails. the new tag is removed. for
 tagging your emails use:
 
 ```bash
-python blaecksprutte.py --test
+python blaecksprutte.py --tag
 ```
 
 you should be able to add to your notmuch command line as in for
