@@ -52,5 +52,6 @@ def write_tags(ids, tags):
     for i, ts in zip(ids, tags):
         m = db.find_message(i)
         m.remove_tag("new")
+        m.add_tag("inbox")
         for t in ts:
             m.add_tag(t)
