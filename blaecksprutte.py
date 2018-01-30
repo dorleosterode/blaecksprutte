@@ -51,9 +51,11 @@ def train_from_bottom():
 
     return vectorizer, binarizer, clf
 
-def tag_new_mails(v, b, c):
+def tag_new_mails(filename):
     data, ids = extract_mails.get_new_mails()
     if len(data) > 0:
+        with open(filename, 'rb') as f:
+            v, b, c = cPickle.load(f)
         X = v.transform(data)
         preds = c.predict(X)
         tags = b.inverse_transform(preds)
@@ -68,9 +70,7 @@ def main():
     filename = "tagger.pkl"
 
     if args.tag:
-        with open(filename, 'rb') as f:
-            v, b, c = cPickle.load(f)
-        tag_new_mails(v, b, c)
+        tag_new_mails(filename)
     elif args.train:
         v, b, c = train_from_bottom()
         with open(filename, 'wb') as f:
