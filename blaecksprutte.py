@@ -110,7 +110,7 @@ def main():
     if args.tag:
         tag_new_mails(filename, log)
     elif args.train:
-        v, b, c = train_from_bottom()
+        v, b, c = train_from_bottom(log)
         with open(filename, 'wb') as f:
             cPickle.dump([v, b, c], f)
 
