@@ -1,6 +1,8 @@
 import argparse
 import cPickle
 import logging
+from notmuch import Database
+import os
 from sklearn.linear_model import SGDClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.multiclass import OneVsRestClassifier
@@ -93,7 +95,11 @@ def main():
     subparsers.add_parser("validate", help="show a classification report on stdout when trained on 0.6 of the maildir and tested on the other 0.4.")
     args = parser.parse_args()
 
-    filename = "tagger.pkl"
+    db = Database()
+    path = db.get_path()
+    db.close()
+
+    filename = os.path.join(path, "blaecksprutte.db")
 
     level = logging.ERROR
 
