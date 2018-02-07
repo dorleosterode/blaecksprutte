@@ -22,6 +22,19 @@ python blaecksprutte.py train
 
 the trained model is stored in 'tagger.pkl'.
 
+### validating
+
+you can check, how well the classifier can perform on your mails. when
+you use:
+
+```bash
+python blaecksprutte.py validate
+```
+
+the classifier is trained on 0.6 of your mails and tested on the other
+0.4. a classification report with precision, recall and f1-score for
+every tag is printed to stdout.
+
 ### tagging your emails
 
 blaecksprutte searches for all emails containing the 'new' tag and
