@@ -8,6 +8,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import label_ranking_average_precision_score
 from sklearn.metrics import label_ranking_loss
+from sklearn.metrics import classification_report
 import sys
 
 import extract_mails
@@ -46,10 +47,7 @@ def validate(log):
     preds = clf.predict(Xt)
     real = binarizer.transform(y_test)
 
-    print "average precision:"
-    print label_ranking_average_precision_score(real, preds)
-    print "ranking loss:"
-    print label_ranking_loss(real, preds)
+    print classification_report(real, preds, target_names = binarizer.classes_)
 
 def train_from_bottom(log):
     log.info("extract all mails from database")
@@ -92,6 +90,8 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("train", help="train the tagger from standard notmuch database")
     subparsers.add_parser("tag", help="tag the mails with a new-tag")
+    subparsers.add_parser("validate", help="show a classification report on stdout when trained on 60 % of the \
+maildir and tested on the other 40 %.")
     args = parser.parse_args()
 
     filename = "tagger.pkl"
@@ -115,6 +115,9 @@ def main():
 
     if args.command == 'tag':
         tag_new_mails(filename, log)
+
+    if args.command == 'validate':
+        validate(log)
 
 if __name__ == "__main__":
     main()
