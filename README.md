@@ -20,7 +20,7 @@ to train your personal email tagger use:
 python blaecksprutte.py train
 ```
 
-the trained model is stored in 'tagger.pkl'.
+the trained model is stored in your maildir in 'blaecksprutte.db'
 
 ### validating
 
@@ -51,9 +51,6 @@ example:
 ```bash
 watch -n 180 "mbsync -a && notmuch new && python blaecksprutte.py tag"
 ```
-
-be sure to execute this command from within the blaecksprutte
-directory. else the trained model can't be found.
 
 ### contributing and improving
 
