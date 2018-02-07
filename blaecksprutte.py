@@ -88,9 +88,10 @@ def tag_new_mails(filename, log):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train", help="train the tagger from standard notmuch database", action="store_true")
-    parser.add_argument("--tag", help="tag the mails with a new-tag", action="store_true")
     parser.add_argument("--verbose", help="print logging messages to stdout", action="store_true")
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("train", help="train the tagger from standard notmuch database")
+    subparsers.add_parser("tag", help="tag the mails with a new-tag")
     args = parser.parse_args()
 
     filename = "tagger.pkl"
@@ -107,12 +108,13 @@ def main():
     log.addHandler(out_hdlr)
     log.setLevel(level)
 
-    if args.tag:
-        tag_new_mails(filename, log)
-    elif args.train:
+    if args.command == 'train':
         v, b, c = train_from_bottom(log)
         with open(filename, 'wb') as f:
             cPickle.dump([v, b, c], f)
+
+    if args.command == 'tag':
+        tag_new_mails(filename, log)
 
 if __name__ == "__main__":
     main()

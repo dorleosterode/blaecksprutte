@@ -17,7 +17,7 @@ you have installed both of them.
 to train your personal email tagger use:
 
 ```bash
-python blaecksprutte.py --train
+python blaecksprutte.py train
 ```
 
 the trained model is stored in 'tagger.pkl'.
@@ -29,14 +29,14 @@ calculates probable tags for these emails. the new tag is removed. for
 tagging your emails use:
 
 ```bash
-python blaecksprutte.py --tag
+python blaecksprutte.py tag
 ```
 
 you should be able to add to your notmuch command line as in for
 example:
 
 ```bash
-watch -n 180 "mbsync -a && notmuch new && python blaecksprutte.py --tag"
+watch -n 180 "mbsync -a && notmuch new && python blaecksprutte.py tag"
 ```
 
 be sure to execute this command from within the blaecksprutte
