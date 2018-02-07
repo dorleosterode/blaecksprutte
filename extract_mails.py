@@ -2,7 +2,7 @@ import sys
 from notmuch import Database, Query
 
 def erase_irrelevant_tags(lst):
-    irrelevant = {"attachment", "draft", "encrypted", "new", "signed", "unread", "inbox"}
+    irrelevant = {"attachment", "draft", "encrypted", "new", "signed", "unread", "inbox", "replied"}
     return filter(lambda x: x not in irrelevant, lst)
 
 def get_training_data():
