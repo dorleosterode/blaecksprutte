@@ -90,8 +90,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("train", help="train the tagger from standard notmuch database")
     subparsers.add_parser("tag", help="tag the mails with a new-tag")
-    subparsers.add_parser("validate", help="show a classification report on stdout when trained on 60 % of the \
-maildir and tested on the other 40 %.")
+    subparsers.add_parser("validate", help="show a classification report on stdout when trained on 0.6 of the maildir and tested on the other 0.4.")
     args = parser.parse_args()
 
     filename = "tagger.pkl"
