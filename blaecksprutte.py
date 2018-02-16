@@ -116,7 +116,8 @@ def main():
     if args.command == 'train':
         v, b, c = train_from_bottom(log)
         with open(filename, 'wb') as f:
-            cPickle.dump([v, b, c], f)
+            cPickle.dump([v, b, c], f,
+                         cPickle.HIGHEST_PROTOCOL)
 
     if args.command == 'tag':
         tag_new_mails(filename, log)
