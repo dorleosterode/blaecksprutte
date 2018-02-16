@@ -3,6 +3,7 @@ import cPickle
 import logging
 from notmuch import Database
 import os
+from sklearn.exceptions import UndefinedMetricWarning
 from sklearn.linear_model import SGDClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.multiclass import OneVsRestClassifier
@@ -12,6 +13,7 @@ from sklearn.metrics import label_ranking_average_precision_score
 from sklearn.metrics import label_ranking_loss
 from sklearn.metrics import classification_report
 import sys
+import warnings
 
 import extract_mails
 
@@ -100,6 +102,8 @@ def main():
     db.close()
 
     filename = os.path.join(path, "blaecksprutte.db")
+
+    warnings.simplefilter('ignore', UndefinedMetricWarning)
 
     level = logging.ERROR
 
