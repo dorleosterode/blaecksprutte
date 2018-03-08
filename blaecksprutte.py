@@ -28,9 +28,9 @@ class StdLogger:
         if self.logger is not None:
             self.logger.log(level, msg)
 
-def validate(log):
+def validate(log, progress=False):
     log.info("getting data")
-    data, labels = extract_mails.get_training_data()
+    data, labels = extract_mails.get_training_data(progress)
     log.info("splitting data")
     x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.4, random_state=0)
 
@@ -53,9 +53,10 @@ def validate(log):
 
     print classification_report(real, preds, target_names = binarizer.classes_)
 
-def train_from_bottom(log):
+def train_from_bottom(log, progress=False):
     log.info("extract all mails from database")
-    train_data, train_labels = extract_mails.get_training_data()
+    train_data, train_labels = \
+        extract_mails.get_training_data(progress)
     log.info("got {0} mails".format(len(train_data)))
 
     log.info("create the vocabulary")
@@ -91,6 +92,8 @@ def tag_new_mails(filename, log):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", help="print logging messages to stdout", action="store_true")
+    parser.add_argument("--progress", help="print a progress bar",
+                        action="store_true")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("train", help="train the tagger from standard notmuch database")
     subparsers.add_parser("tag", help="tag the mails with a new-tag")
@@ -118,7 +121,7 @@ def main():
     log.setLevel(level)
 
     if args.command == 'train':
-        v, b, c = train_from_bottom(log)
+        v, b, c = train_from_bottom(log, args.progress)
         with open(filename, 'wb') as f:
             cPickle.dump([v, b, c], f,
                          cPickle.HIGHEST_PROTOCOL)
@@ -127,7 +130,7 @@ def main():
         tag_new_mails(filename, log)
 
     if args.command == 'validate':
-        validate(log)
+        validate(log, args.progress)
 
 if __name__ == "__main__":
     main()
