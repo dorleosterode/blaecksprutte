@@ -41,9 +41,9 @@ def atomic_pickle(o, filename):
         cPickle.dump(o, f, cPickle.HIGHEST_PROTOCOL)
     os.rename(tmp, filename)
 
-def optimize(log, filename):
+def optimize(log, filename, progress=False):
     log.info("getting data")
-    data, labels = extract_mails.get_training_data()
+    data, labels = extract_mails.get_training_data(progress)
     log.info("splitting data")
     x_train, x_test, y_train, y_test = train_test_split(data,
                                                         labels,
@@ -94,6 +94,8 @@ def optimize(log, filename):
     clf.set_params(**best_parameters)
     atomic_pickle(clf, filename)
 
+    return data, labels
+
 def validate(log, filename, progress=False):
     log.info("getting data")
     data, labels = extract_mails.get_training_data(progress)
@@ -120,18 +122,19 @@ def validate(log, filename, progress=False):
 
     print classification_report(real, preds, target_names = binarizer.classes_)
 
-def train_from_bottom(log, filename, progress=False):
-    log.info("extract all mails from database")
-    train_data, train_labels = \
-        extract_mails.get_training_data(progress)
-    log.info("got {0} mails".format(len(train_data)))
+def train_from_bottom(log, filename, progress=False, data=None, labels=None):
+    if data is None or labels is None:
+        log.info("extract all mails from database")
+        data, labels = \
+            extract_mails.get_training_data(progress)
+    log.info("got {0} mails".format(len(data)))
 
     log.info("create the vocabulary")
     vectorizer = CountVectorizer()
-    X = vectorizer.fit_transform(train_data)
+    X = vectorizer.fit_transform(data)
     log.info("vocabulary size: {0}".format(len(vectorizer.vocabulary_)))
     binarizer = MultiLabelBinarizer()
-    Y = binarizer.fit_transform(train_labels)
+    Y = binarizer.fit_transform(labels)
 
     log.info("train the classifier")
     with open(filename, 'rb') as f:
@@ -159,10 +162,11 @@ def tag_new_mails(filename, log):
         log.info("completed prediction")
 
 def train(log, pipeline_filename, model_filename, progress):
+    data, labels = None, None
     if not os.path.isfile(pipeline_filename):
         log.warn("no existing pipeline found: searching for best parameters. This may take some time!")
-        optimize(log, pipeline_filename)
-    v, b, c = train_from_bottom(log, pipeline_filename, progress)
+        data, labels = optimize(log, pipeline_filename, progress)
+    v, b, c = train_from_bottom(log, pipeline_filename, progress, data, labels)
     atomic_pickle([v, b, c], model_filename)
 
 def main():
@@ -206,14 +210,14 @@ def main():
     if args.command == 'tag':
         if not os.path.isfile(model_filename):
             log.warn("no existing model file found: training model. This may take some time!")
-            train(log, pipeline_filename, model_filename)
+            train(log, pipeline_filename, model_filename, args.progress)
         tag_new_mails(model_filename, log)
 
     if args.command == 'validate':
         validate(log, pipeline_filename, args.progress)
 
     if args.command == 'optimize':
-        optimize(log, pipeline_filename)
+        optimize(log, pipeline_filename, args.progress)
 
 if __name__ == "__main__":
     main()
