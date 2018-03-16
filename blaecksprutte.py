@@ -94,9 +94,9 @@ def optimize(log, filename):
     clf.set_params(**best_parameters)
     atomic_pickle(clf, filename)
 
-def validate(log, filename):
+def validate(log, filename, progress=False):
     log.info("getting data")
-    data, labels = extract_mails.get_training_data()
+    data, labels = extract_mails.get_training_data(progress)
     log.info("splitting data")
     x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.4, random_state=0)
 
@@ -120,9 +120,10 @@ def validate(log, filename):
 
     print classification_report(real, preds, target_names = binarizer.classes_)
 
-def train_from_bottom(log, filename):
+def train_from_bottom(log, filename, progress=False):
     log.info("extract all mails from database")
-    train_data, train_labels = extract_mails.get_training_data()
+    train_data, train_labels = \
+        extract_mails.get_training_data(progress)
     log.info("got {0} mails".format(len(train_data)))
 
     log.info("create the vocabulary")
@@ -157,16 +158,18 @@ def tag_new_mails(filename, log):
         extract_mails.write_tags(ids, tags)
         log.info("completed prediction")
 
-def train(log, pipeline_filename, model_filename):
+def train(log, pipeline_filename, model_filename, progress):
     if not os.path.isfile(pipeline_filename):
         log.warn("no existing pipeline found: searching for best parameters. This may take some time!")
         optimize(log, pipeline_filename)
-    v, b, c = train_from_bottom(log, pipeline_filename)
+    v, b, c = train_from_bottom(log, pipeline_filename, progress)
     atomic_pickle([v, b, c], model_filename)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", help="print logging messages to stdout", action="store_true")
+    parser.add_argument("--progress", help="print a progress bar",
+                        action="store_true")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("train", help="train the tagger from standard notmuch database")
     subparsers.add_parser("tag", help="tag the mails with a new-tag")
@@ -198,7 +201,7 @@ def main():
     log.setLevel(level)
 
     if args.command == 'train':
-        train(log, pipeline_filename, model_filename)
+        train(log, pipeline_filename, model_filename, args.progress)
 
     if args.command == 'tag':
         if not os.path.isfile(model_filename):
@@ -207,11 +210,10 @@ def main():
         tag_new_mails(model_filename, log)
 
     if args.command == 'validate':
-        validate(log, pipeline_filename)
+        validate(log, pipeline_filename, args.progress)
 
     if args.command == 'optimize':
         optimize(log, pipeline_filename)
-
 
 if __name__ == "__main__":
     main()

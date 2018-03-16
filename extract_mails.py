@@ -1,19 +1,30 @@
 import sys
 from notmuch import Database, Query
+from progressbar import ProgressBar, Percentage, Bar, ETA
 
 def erase_irrelevant_tags(lst):
     irrelevant = {"attachment", "draft", "encrypted", "new", "signed", "unread",
                   "inbox", "replied", "flagged"}
     return filter(lambda x: x not in irrelevant, lst)
 
-def get_training_data():
+def get_training_data(progress=False):
     training_data = []
     training_labels = []
     db = Database()
     # query that returns all the messages
     q = Query(db, '')
+    if progress:
+        count = q.count_messages()
+        n = 0
+        pbar = ProgressBar(widgets=[Percentage(), Bar(), ETA()],
+                           maxval=count).start()
+
     data = []
     for m in q.search_messages():
+        if progress:
+            n += 1
+            pbar.update(n)
+
 	data.append(m.get_header('To'))
 	data.append(m.get_header('From'))
 	data.append(m.get_header('Subject'))
@@ -26,6 +37,8 @@ def get_training_data():
 	training_labels.append(erase_irrelevant_tags(list(m.get_tags())))
 	data = []
 
+    if progress:
+        pbar.finish()
     return training_data, training_labels
 
 def get_new_mails():
