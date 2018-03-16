@@ -10,7 +10,8 @@ system. configuration is not possible.
 ### dependencies
 
 blaecksprutte uses scikit-learn and the notmuch python api. make sure,
-you have installed both of them.
+you have installed both of them. also the progressbar package of
+python is used.
 
 ### training
 
@@ -34,6 +35,17 @@ python blaecksprutte.py validate
 the classifier is trained on 0.6 of your mails and tested on the other
 0.4. a classification report with precision, recall and f1-score for
 every tag is printed to stdout.
+
+### optimizing the hyperparameters
+
+blaecksprutte searches 90 combinations of 3 hyperparameters for the
+best fitting parameters on your dataset. this is done automatically
+before your first training run. you can choose the best parameters
+manually with:
+
+```bash
+python blaecksprutte.py optimize
+```
 
 ### tagging your emails
 
