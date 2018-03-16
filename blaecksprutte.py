@@ -2,16 +2,23 @@ import argparse
 import cPickle
 import logging
 from notmuch import Database
+import numpy as np
 import os
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.exceptions import UndefinedMetricWarning
 from sklearn.linear_model import SGDClassifier
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_selection import SelectFromModel
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 from sklearn.metrics import label_ranking_average_precision_score
 from sklearn.metrics import label_ranking_loss
 from sklearn.metrics import classification_report
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
 import sys
 import warnings
 
@@ -28,7 +35,66 @@ class StdLogger:
         if self.logger is not None:
             self.logger.log(level, msg)
 
-def validate(log):
+def atomic_pickle(o, filename):
+    tmp = filename + '.tmp'
+    with open(tmp, 'wb') as f:
+        cPickle.dump(o, f, cPickle.HIGHEST_PROTOCOL)
+    os.rename(tmp, filename)
+
+def optimize(log, filename):
+    log.info("getting data")
+    data, labels = extract_mails.get_training_data()
+    log.info("splitting data")
+    x_train, x_test, y_train, y_test = train_test_split(data,
+                                                        labels,
+                                                        test_size=0.4,
+                                                        random_state=0)
+
+    log.info("preprocessing data")
+    vectorizer = CountVectorizer()
+    vectorizer.fit(data)
+    X = vectorizer.transform(x_train)
+    binarizer = MultiLabelBinarizer()
+    binarizer.fit(labels)
+    Y = binarizer.transform(y_train)
+
+    # do a gridsearch for the best parameters
+    log.info("doing gridsearch... this may take some time")
+    pipe = Pipeline([
+        ('feature_selection', SelectFromModel(
+            RandomForestClassifier(n_estimators=10))),
+        ('classification', SVC())
+    ])
+    clf = OneVsRestClassifier(pipe)
+    parameters = {
+        "estimator__feature_selection__threshold": ('mean', '0.5*mean', 0),
+        "estimator__classification__kernel": ('linear', 'rbf'),
+        "estimator__classification__C": (0.01, 0.1, 1, 10, 100)
+    }
+
+    grid_search = GridSearchCV(clf, parameters, n_jobs=-1, verbose=1,
+                               scoring='f1_samples', error_score=0)
+    grid_search.fit(X, Y)
+
+    print grid_search.best_score_
+    best_parameters = grid_search.best_estimator_.get_params()
+    for param_name in sorted(parameters.keys()):
+        print "\t{0}: {1}".format(param_name, best_parameters[param_name])
+
+    log.info("evaluating classifier")
+    Xt = vectorizer.transform(x_test)
+    preds = grid_search.best_estimator_.predict(Xt)
+    real = binarizer.transform(y_test)
+
+    print classification_report(real, preds, target_names = binarizer.classes_)
+
+    # store the parameters from the best estimator and the pipeline,
+    # so that the next time for training the best pipeline can be
+    # used!
+    clf.set_params(**best_parameters)
+    atomic_pickle(clf, filename)
+
+def validate(log, filename):
     log.info("getting data")
     data, labels = extract_mails.get_training_data()
     log.info("splitting data")
@@ -42,18 +108,19 @@ def validate(log):
     binarizer.fit(labels)
     Y = binarizer.transform(y_train)
 
-    log.info("train classifier")
-    clf = OneVsRestClassifier(SGDClassifier())
+    log.info("training best classifier")
+    with open(filename, 'rb') as f:
+        clf = cPickle.load(f)
     clf.fit(X, Y)
 
-    log.info("evaluate classifier")
+    log.info("evaluating classifier")
     Xt = vectorizer.transform(x_test)
     preds = clf.predict(Xt)
     real = binarizer.transform(y_test)
 
     print classification_report(real, preds, target_names = binarizer.classes_)
 
-def train_from_bottom(log):
+def train_from_bottom(log, filename):
     log.info("extract all mails from database")
     train_data, train_labels = extract_mails.get_training_data()
     log.info("got {0} mails".format(len(train_data)))
@@ -66,6 +133,8 @@ def train_from_bottom(log):
     Y = binarizer.fit_transform(train_labels)
 
     log.info("train the classifier")
+    with open(filename, 'rb') as f:
+        clf = cPickle.load(f)
     clf = OneVsRestClassifier(SGDClassifier())
     clf.fit(X, Y)
     log.info("completed training")
@@ -88,6 +157,13 @@ def tag_new_mails(filename, log):
         extract_mails.write_tags(ids, tags)
         log.info("completed prediction")
 
+def train(log, pipeline_filename, model_filename):
+    if not os.path.isfile(pipeline_filename):
+        log.warn("no existing pipeline found: searching for best parameters. This may take some time!")
+        optimize(log, pipeline_filename)
+    v, b, c = train_from_bottom(log, pipeline_filename)
+    atomic_pickle([v, b, c], model_filename)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verbose", help="print logging messages to stdout", action="store_true")
@@ -95,15 +171,19 @@ def main():
     subparsers.add_parser("train", help="train the tagger from standard notmuch database")
     subparsers.add_parser("tag", help="tag the mails with a new-tag")
     subparsers.add_parser("validate", help="show a classification report on stdout when trained on 0.6 of the maildir and tested on the other 0.4.")
+    subparsers.add_parser("optimize", help="perform a grid search with 60 different possible hyperparameters to find the best ones")
     args = parser.parse_args()
 
     db = Database()
     path = db.get_path()
     db.close()
 
-    filename = os.path.join(path, "blaecksprutte.db")
+    model_filename = os.path.join(path, "blaecksprutte.db")
+    pipeline_filename = os.path.join(path, "best_pipeline.db")
 
     warnings.simplefilter('ignore', UndefinedMetricWarning)
+    warnings.simplefilter('ignore', FutureWarning)
+    warnings.simplefilter('ignore', UserWarning)
 
     level = logging.ERROR
 
@@ -118,16 +198,20 @@ def main():
     log.setLevel(level)
 
     if args.command == 'train':
-        v, b, c = train_from_bottom(log)
-        with open(filename, 'wb') as f:
-            cPickle.dump([v, b, c], f,
-                         cPickle.HIGHEST_PROTOCOL)
+        train(log, pipeline_filename, model_filename)
 
     if args.command == 'tag':
-        tag_new_mails(filename, log)
+        if not os.path.isfile(model_filename):
+            log.warn("no existing model file found: training model. This may take some time!")
+            train(log, pipeline_filename, model_filename)
+        tag_new_mails(model_filename, log)
 
     if args.command == 'validate':
-        validate(log)
+        validate(log, pipeline_filename)
+
+    if args.command == 'optimize':
+        optimize(log, pipeline_filename)
+
 
 if __name__ == "__main__":
     main()
