@@ -164,9 +164,16 @@ def tag_new_mails(filename, log):
 def train(log, pipeline_filename, model_filename, progress):
     data, labels = None, None
     if not os.path.isfile(pipeline_filename):
-        log.warn("no existing pipeline found: searching for best parameters. This may take some time!")
-        data, labels = optimize(log, pipeline_filename, progress)
-    v, b, c = train_from_bottom(log, pipeline_filename, progress, data, labels)
+        # TODO: this is to buggy and takes a lot of time! use a simple
+        # pipeline for the beginning
+        # log.warn("no existing pipeline found: searching for best parameters. This may take some time!")
+        # data, labels = optimize(log, pipeline_filename, progress)
+        pipe = Pipeline([
+        ('classification', SVC())
+        ])
+        clf = OneVsRestClassifier(pipe)
+        atomic_pickle(clf, pipeline_filename)
+    v, b, c = train_from_bottom(log, pipeline_filename, progress)
     atomic_pickle([v, b, c], model_filename)
 
 def main():
